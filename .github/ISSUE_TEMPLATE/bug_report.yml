@@ -1,0 +1,44 @@
+name: Bug report
+description: Something doesn't apply / reconcile / behave as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Please redact subscription IDs, tenant IDs, and any secrets from logs.
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Affected layer / area
+      options:
+        - "terraform/00-bootstrap"
+        - "terraform/10-network"
+        - "terraform/20-identity"
+        - "terraform/30-aks"
+        - "terraform/40-gitops"
+        - "terraform/50-observability"
+        - "terraform/60-llm-platform"
+        - "gitops/ (Argo CD / Flux / KEDA)"
+        - "scripts / CI / other"
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Expected vs actual, plus the failing command.
+      placeholder: "terraform -chdir=terraform/30-aks apply … →  Error: …"
+    validations: { required: true }
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      value: |
+        - Terraform version:
+        - azurerm provider version:
+        - Region / SKU (e.g. westeurope, NC24ads_A100_v4 Spot):
+        - Private cluster? (yes/no, running from inside VNet?):
+    validations: { required: true }
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs (redacted)
+      render: shell

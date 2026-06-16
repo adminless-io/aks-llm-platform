@@ -1,0 +1,8 @@
+# Default owners for everything in the repo.
+# Replace with your team handle once the repo exists, e.g. @adminless-io/platform
+*               @adminless-io
+
+# Layer-specific owners (optional — uncomment & adjust)
+# /terraform/    @adminless-io/infra
+# /gitops/       @adminless-io/platform
+# /.github/      @adminless-io/maintainers

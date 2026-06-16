@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+    labels: ["dependencies", "ci"]
+
+  - package-ecosystem: terraform
+    directory: "/terraform/30-aks"
+    schedule: { interval: weekly }
+    labels: ["dependencies", "terraform"]
+    # Add one block per layer you want tracked (Dependabot needs an explicit
+    # directory per Terraform root module): 00-bootstrap, 10-network, 20-identity,
+    # 30-aks, 40-gitops, 50-observability, 60-llm-platform.

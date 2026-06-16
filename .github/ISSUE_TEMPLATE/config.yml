@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/adminless-io/aks-llm-platform/discussions
+    about: Ask usage questions or propose ideas here.
+  - name: Azure AKS docs
+    url: https://learn.microsoft.com/en-us/azure/aks/
+    about: Upstream AKS / KEDA / APIM reference.
