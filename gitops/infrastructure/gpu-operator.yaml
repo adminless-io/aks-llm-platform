@@ -1,0 +1,62 @@
+---
+# NVIDIA GPU Operator — OPT-IN H100 path (NOT in kustomization.yaml by default).
+#
+# Two mutually-exclusive driver strategies on AKS:
+#   (A) DEFAULT — AKS manages the GPU driver + device plugin on the node image;
+#       we only run the standalone dcgm-exporter (dcgm-exporter.yaml) for metrics.
+#       Works for H100 on recent AKS node images. No operator needed.
+#   (B) THIS FILE — full operator manages driver + toolkit + device plugin + DCGM
+#       + MIG manager. Use when you need a PINNED driver (newest Hopper) or MIG
+#       partitioning. REQUIRES the GPU node pool created WITHOUT the AKS driver
+#       (--skip-gpu-driver-install; aks-preview / set via the node pool), else the
+#       operator's driver/device-plugin double-installs and conflicts.
+#
+# To enable path B: add this file to kustomization.yaml, REMOVE dcgm-exporter.yaml
+# (the operator ships its own DCGM), and provision the GPU pool with the AKS
+# driver install skipped.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gpu-operator
+  namespace: gpu-operator
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: gpu-operator
+      version: "v24.9.x"
+      sourceRef:
+        kind: HelmRepository
+        name: nvidia-gpu-operator
+        namespace: flux-system
+  values:
+    # Operator-managed driver (pin a Hopper-capable version).
+    driver:
+      enabled: true
+      version: "550.90.07"
+    toolkit:
+      enabled: true
+    devicePlugin:
+      enabled: true
+    dcgmExporter:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+    # MIG: partition each H100 into smaller instances for small models (FinOps).
+    # "single" applies one MIG profile cluster-wide; "mixed" allows per-node.
+    mig:
+      strategy: single
+    # Operator components run on the GPU nodes; tolerate the gpu taint.
+    daemonsets:
+      tolerations:
+        - key: sku
+          operator: Equal
+          value: gpu
+          effect: NoSchedule
+    node-feature-discovery:
+      worker:
+        tolerations:
+          - key: sku
+            operator: Equal
+            value: gpu
+            effect: NoSchedule

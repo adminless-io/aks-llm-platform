@@ -1,0 +1,27 @@
+---
+# KEDA scales serving replicas on inflight concurrency (Prometheus). When it
+# scales to 0 replicas and the GPU pool drains, the cluster autoscaler removes
+# the GPU node -> scale-to-zero GPU cost. minReplicaCount: 0 enables that.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: llm-serving
+  namespace: llm
+spec:
+  scaleTargetRef:
+    name: llm-serving
+  minReplicaCount: 0
+  maxReplicaCount: 3
+  cooldownPeriod: 300
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.observability.svc:9090
+        metricName: vllm_num_requests_running
+        query: sum(vllm_num_requests_running)
+        threshold: "4"

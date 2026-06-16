@@ -1,0 +1,56 @@
+---
+name: lint
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.2
+      - name: fmt
+        run: terraform fmt -recursive -check -diff
+      - name: validate (per layer, backend disabled)
+        run: |
+          set -euo pipefail
+          for d in terraform/[0-9]*; do
+            echo "::group::validate $d"
+            terraform -chdir="$d" init -backend=false -input=false
+            terraform -chdir="$d" validate
+            echo "::endgroup::"
+          done
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+      - name: tflint
+        run: |
+          tflint --init --config="$PWD/.tflint.hcl"
+          for d in terraform/[0-9]*; do
+            tflint --chdir="$d" --config="$PWD/.tflint.hcl"
+          done
+
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform
+          framework: terraform
+          soft_fail: true
+          quiet: true
+
+  yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx install yamllint
+      - run: yamllint -c .yamllint.yaml gitops test

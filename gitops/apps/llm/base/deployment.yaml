@@ -1,0 +1,104 @@
+---
+# vLLM OpenAI-compatible server for the top-tier open-weight model. Scheduled
+# onto the GPU Spot pool (nodeSelector + tolerations match 30-aks taints).
+# KEDA scales replicas; the cluster autoscaler adds/removes GPU nodes (to zero).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-serving
+  namespace: llm
+  labels:
+    app: llm-serving
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-serving
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0     # zero-downtime: never drop a model replica
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: llm-serving
+        azure.workload.identity/use: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: llm-serving
+      nodeSelector:
+        workload: gpu
+      tolerations:
+        - key: sku
+          operator: Equal
+          value: gpu
+          effect: NoSchedule
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vllm
+          # Image served from ACR (mirror of vllm/vllm-openai). Pin by digest
+          # in prod (see BONUS — registry-unavailable hardening).
+          image: vllm/vllm-openai:v0.6.3
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--model=$(MODEL_ID)"
+            - "--port=8000"
+            - "--max-model-len=8192"
+            - "--gpu-memory-utilization=0.92"
+          env:
+            - name: MODEL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: llm-config
+                  key: model_id
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: "4"
+              memory: 24Gi
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            failureThreshold: 6
+          # Model weights cache. Use a PVC (Azure Files/Blob CSI) in prod so a
+          # rescheduled pod doesn't re-download (cold start + egress cost).
+          volumeMounts:
+            - name: model-cache
+              mountPath: /root/.cache/huggingface
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: model-cache
+          emptyDir:
+            sizeLimit: 100Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi

@@ -1,0 +1,20 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  # Inject the workload-identity client-id (Terraform output). Committed per
+  # environment, or rendered by an Argo CD config-management plugin.
+  - target:
+      kind: ServiceAccount
+      name: llm-serving
+    patch: |
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: "00000000-0000-0000-0000-000000000000"
+configMapGenerator:
+  - name: llm-config
+    behavior: merge
+    literals:
+      - model_id=Qwen/Qwen2.5-7B-Instruct

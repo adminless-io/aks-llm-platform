@@ -1,0 +1,51 @@
+# Copy to terraform.tfvars (git-ignored) and edit. Passed to every layer via
+#   terraform -chdir="terraform/<layer>" apply -var-file="$PWD/terraform.tfvars"
+
+# --- Identity / placement -------------------------------------------------
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+location        = "westeurope"
+env             = "dev"
+
+# --- Naming + cost-allocation tags ---------------------------------------
+name_prefix = "llmops"
+tags = {
+  environment = "dev"
+  product     = "llm-platform"
+  cost_center = "ai-consultancy"
+  owner       = "platform-team"
+}
+
+# --- Remote state backend (created by 00-bootstrap) -----------------------
+# Storage account names are global + max 24 chars, lowercase alphanumeric.
+tfstate_resource_group  = "llmops-tfstate-rg"
+tfstate_storage_account = "llmopstfstatedev01"
+tfstate_container       = "tfstate"
+
+# --- Observability / FinOps alerting -------------------------------------
+alert_email          = "platform-oncall@example.com"
+monthly_budget_usd   = 3000
+
+# --- GitOps -------------------------------------------------------------
+gitops_repo_url      = "https://github.com/your-org/llmops-platform.git"
+gitops_repo_branch   = "main"
+gitops_repo_path     = "gitops"
+
+# --- LLM serving / GPU pool ---------------------------------------------
+# Default (dev): 1x A100 80GB, Spot, scale-to-zero.
+# gpu_node_vm_size = "Standard_NC24ads_A100_v4"
+
+# --- 6x H100 fleet (guaranteed capacity) --------------------------------
+# Azure has no 6-GPU SKU: "6 H100" = node_count x GPUs/node.
+#   6x Standard_NC40ads_H100_v5  -> 6 nodes x 1 H100 NVL 94GB (6 replicas)
+#   3x Standard_NC80adis_H100_v5 -> 3 nodes x 2 H100 (vLLM tensor-parallel=2)
+# Prereqs: H100 quota raised for the NCADS_H100_v5 family, a region that has it,
+# and Regular priority (Spot can't guarantee 6 H100). H100 is often single-zone.
+gpu_node_vm_size   = "Standard_NC40ads_H100_v5"
+gpu_node_priority  = "Regular"   # guaranteed; Spot won't hold 6 H100
+gpu_node_min_count = 6
+gpu_node_max_count = 6
+gpu_node_zones     = ["1"]       # widen only if the SKU is multi-zone in-region
+# gpu_capacity_reservation_group_id = "/subscriptions/.../capacityReservationGroups/h100-crg"
+
+llm_model_preset = "qwen2.5-72b-instruct"

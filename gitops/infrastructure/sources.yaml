@@ -1,0 +1,38 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: opencost
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://opencost.github.io/opencost-helm-chart
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: external-secrets
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://charts.external-secrets.io
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: nvidia
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://nvidia.github.io/dcgm-exporter/helm-charts
+---
+# Source for the opt-in GPU Operator (path B, H100 / MIG). See gpu-operator.yaml.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: nvidia-gpu-operator
+  namespace: flux-system
+spec:
+  interval: 1h
+  type: oci
+  url: oci://nvcr.io/nvidia/charts

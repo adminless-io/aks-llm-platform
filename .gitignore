@@ -1,0 +1,31 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Local state only allowed in 00-bootstrap before backend migration; never commit it.
+00-bootstrap/terraform.tfstate
+00-bootstrap/terraform.tfstate.backup
+
+# Secrets / local vars
+terraform.tfvars
+*.auto.tfvars
+*.secrets.env
+secrets/
+kubeconfig
+*.kubeconfig
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

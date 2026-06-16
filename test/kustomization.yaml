@@ -1,0 +1,70 @@
+---
+# kind test overlay: reuses the SAME base, swapping the GPU vLLM container for a
+# CPU stand-in (traefik/whoami on :8000, 200 on /health). This validates the
+# GitOps LOGIC — kustomize composition, Service wiring, rollout strategy, PDB —
+# not GPU/Spot/Azure behaviour (those gate on a prod-like AKS run; see BONUS).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../gitops/apps/llm/base
+patches:
+  # KEDA CRD isn't present on kind — drop the ScaledObject for the logic test.
+  - target:
+      kind: ScaledObject
+      name: llm-serving
+    patch: |
+      $patch: delete
+      apiVersion: keda.sh/v1alpha1
+      kind: ScaledObject
+      metadata:
+        name: llm-serving
+        namespace: llm
+  # Relax Pod Security so the stand-in schedules on kind.
+  - target:
+      kind: Namespace
+      name: llm
+    patch: |
+      - op: replace
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce
+        value: baseline
+  # Make the serving Deployment schedulable on a CPU-only kind node.
+  - target:
+      kind: Deployment
+      name: llm-serving
+    patch: |
+      - op: remove
+        path: /spec/template/spec/nodeSelector
+      - op: remove
+        path: /spec/template/spec/tolerations
+      - op: remove
+        path: /spec/template/spec/containers/0/env
+      - op: remove
+        path: /spec/template/spec/containers/0/volumeMounts
+      - op: remove
+        path: /spec/template/spec/volumes
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: traefik/whoami:v1.10.3
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["--port=8000"]
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+      - op: replace
+        path: /spec/replicas
+        value: 2

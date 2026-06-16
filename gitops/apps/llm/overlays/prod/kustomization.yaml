@@ -1,0 +1,53 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - target:
+      kind: ServiceAccount
+      name: llm-serving
+    patch: |
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: "00000000-0000-0000-0000-000000000000"
+  # Prod: pin the serving image by digest (registry-unavailable hardening) and
+  # raise the warm floor so the first request isn't a cold GPU start.
+  - target:
+      kind: Deployment
+      name: llm-serving
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: "yourregistry.azurecr.io/vllm/vllm-openai@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  - target:
+      kind: ScaledObject
+      name: llm-serving
+    patch: |
+      - op: replace
+        path: /spec/minReplicaCount
+        value: 1
+      - op: replace
+        path: /spec/maxReplicaCount
+        value: 6
+  # Multi-GPU node (e.g. 3x NC80adis_H100_v5, 2 H100/node): tensor-parallel=2.
+  # Uncomment to run 72B fp16 across both H100 on a node. For 6x NC40ads
+  # (1 H100/node) keep TP=1 and serve 72B quantized (FP8/AWQ fits in 94GB).
+  # - target:
+  #     kind: Deployment
+  #     name: llm-serving
+  #     patch: |
+  #       - op: add
+  #         path: /spec/template/spec/containers/0/args/-
+  #         value: "--tensor-parallel-size=2"
+  #       - op: replace
+  #         path: /spec/template/spec/containers/0/resources/requests/nvidia.com~1gpu
+  #         value: "2"
+  #       - op: replace
+  #         path: /spec/template/spec/containers/0/resources/limits/nvidia.com~1gpu
+  #         value: "2"
+configMapGenerator:
+  - name: llm-config
+    behavior: merge
+    literals:
+      - model_id=Qwen/Qwen2.5-72B-Instruct

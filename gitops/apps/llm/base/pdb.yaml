@@ -1,0 +1,13 @@
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: llm-serving
+  namespace: llm
+spec:
+  # maxUnavailable over minAvailable so a scaled-to-zero deployment doesn't
+  # block node drains (minAvailable:1 would deadlock at 0 replicas).
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: llm-serving

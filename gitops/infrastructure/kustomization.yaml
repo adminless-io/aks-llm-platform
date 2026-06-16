@@ -1,0 +1,15 @@
+---
+# Flux reconciles this tree (the "infrastructure" Kustomization from 40-gitops).
+# These are PLATFORM components — distinct from the Argo CD "product" apps.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces.yaml
+  - sources.yaml
+  - external-secrets.yaml
+  - opencost.yaml
+  - dcgm-exporter.yaml
+  # H100 path B (operator-managed driver + MIG): enable gpu-operator.yaml and
+  # REMOVE dcgm-exporter.yaml above (operator ships its own DCGM). Requires the
+  # GPU pool provisioned with the AKS driver install skipped. See gpu-operator.yaml.
+  # - gpu-operator.yaml

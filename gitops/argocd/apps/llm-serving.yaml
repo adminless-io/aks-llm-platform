@@ -1,0 +1,27 @@
+---
+# Child of the app-of-apps "root" (created by 40-gitops). Argo CD delivers the
+# LLM serving stack from the dev overlay; flip the path to overlays/prod for
+# the prod cluster (or template via ApplicationSet per environment).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llm-serving
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/llmops-platform.git
+    targetRevision: main
+    path: gitops/apps/llm/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: llm
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

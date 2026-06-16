@@ -1,0 +1,7 @@
+---
+# The app-of-apps tree. Each Application here is a "product" workload Argo CD
+# owns. Add an app = add a file + commit; no Terraform change.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - llm-serving.yaml
